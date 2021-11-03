@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 
 
 @dataclass
@@ -105,15 +105,14 @@ class SportsWalking(Training):
 class Swimming(Training):
     """Тренировка: плавание."""
     length_pool: float  # Добавляем параметр "длина бассейна" в метрах.
-    count_pool: float  # Добавили количество переплываний бассейна.
+    count_pool: int  # Добавили количество переплываний бассейна.
 
     LEN_STEP = 1.38  # Дистанция, проходимая плавцом за один гребок.
     INCREASING_MEAN_SPEED = 1.1
     MULTIPLYING_MEAN_SPEED = 2
 
     def get_mean_speed(self) -> float:
-        """Получить среднюю скорость движения."""
-        # Средняя скорость движения в километрах в час.
+        """Получить среднюю скорость движения в км/ч."""
         return (((self.length_pool * self.count_pool) / self.M_IN_KM)
                 / self.duration)
 
@@ -127,27 +126,24 @@ class Swimming(Training):
         )
 
 
-TRAINING_TYPE = {
+TRAINING_TYPES = {
     'RUN': Running,
     'WLK': SportsWalking,
     'SWM': Swimming
 }
 
 
+ERROR_MESSAGE = 'Неожиданное значение параметра'
+
+
 def read_package(workout_type: str, data: list) -> Training:
     """Прочитать данные полученные от датчиков."""
-    if workout_type not in TRAINING_TYPE:
-        raise ValueError(
-            f'Ключ {workout_type} не найден'
-            f'в списке допустимых значений.'
-        )
-    elif len(data) != len(TRAINING_TYPE[workout_type].__dataclass_fields__):
-        raise ValueError(
-            'Число входящих параметров '
-            'не соответствует ожиданию.'
-        )
-    else:
-        return TRAINING_TYPE[workout_type](*data)
+    if workout_type not in TRAINING_TYPES:
+        raise ValueError(f'{ERROR_MESSAGE} {workout_type}')
+    training_types_values = TRAINING_TYPES[workout_type]
+    if len(data) != len(fields(training_types_values)):
+        raise ValueError(f'{ERROR_MESSAGE} для {workout_type}')
+    return training_types_values(*data)
 
 
 def main(training: Training) -> None:
