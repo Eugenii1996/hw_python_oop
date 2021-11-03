@@ -133,9 +133,8 @@ TRAINING_TYPES = {
 }
 
 
-ERROR_CHECKING_AVAILABILITY_IN_DICTIONARY = ('Неожиданное значение '
-                                             'параметра {workout_key}')
-ERROR_CHECKING_COUNT_PARAMETERS = ('Неожиданное значение '
+UNEXPECTED_TYPE = ('Неожиданное значение параметра {workout_key}')
+ERROR_CHECKING_PARAMETERS_COUNT = ('Неожиданное значение '
                                    'параметра для {workout_key}, '
                                    'количество полученных '
                                    'параметров: {count_params}')
@@ -145,16 +144,16 @@ def read_package(workout_type: str, data) -> Training:
     """Прочитать данные полученные от датчиков."""
     if workout_type not in TRAINING_TYPES:
         raise ValueError(
-            ERROR_CHECKING_AVAILABILITY_IN_DICTIONARY
+            UNEXPECTED_TYPE
             .format(workout_key=workout_type)
         )
-    training_type_value = TRAINING_TYPES[workout_type]
-    if len(data) != len(fields(training_type_value)):
+    class_ = TRAINING_TYPES[workout_type]
+    if len(data) != len(fields(class_)):
         raise ValueError(
-            ERROR_CHECKING_COUNT_PARAMETERS
+            ERROR_CHECKING_PARAMETERS_COUNT
             .format(workout_key=workout_type, count_params=len(data))
         )
-    return training_type_value(*data)
+    return class_(*data)
 
 
 def main(training: Training) -> None:
