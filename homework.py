@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -11,23 +11,16 @@ class InfoMessage:
     calories: float
 
     MESSAGE = (
-        'Тип тренировки: {key_to_insert[0]}; '
-        'Длительность: {key_to_insert[1]:.3f} ч.; '
-        'Дистанция: {key_to_insert[2]:.3f} км; '
-        'Ср. скорость: {key_to_insert[3]:.3f} км/ч; '
-        'Потрачено ккал: {key_to_insert[4]:.3f}.'
+        'Тип тренировки: {training_type}; '
+        'Длительность: {duration:.3f} ч.; '
+        'Дистанция: {distance:.3f} км; '
+        'Ср. скорость: {speed:.3f} км/ч; '
+        'Потрачено ккал: {calories:.3f}.'
     )
 
     def get_message(self):
         """Выводит на экран информацию о тренировке."""
-        message_data = (
-            self.training_type,
-            self.duration,
-            self.distance,
-            self.speed,
-            self.calories
-        )
-        return self.MESSAGE.format(key_to_insert=message_data)
+        return self.MESSAGE.format(**asdict(self))
 
 
 @dataclass
@@ -46,7 +39,6 @@ class Training:
 
     def get_mean_speed(self) -> float:
         """Получить среднюю скорость движения."""
-        # Средняя скорость движения в километрах в час.
         return self.get_distance() / self.duration
 
     def get_spent_calories(self) -> float:
@@ -55,7 +47,6 @@ class Training:
 
     def show_training_info(self) -> InfoMessage:
         """Вернуть информационное сообщение о выполненной тренировке."""
-        # Создаём объект класса InfoMessage
         return InfoMessage(
             type(self).__name__,
             self.duration,
@@ -68,23 +59,21 @@ class Training:
 class Running(Training):
     """Тренировка: бег."""
 
-    # Коэффициент для перевода часов в минуты.
     HOURS_TO_MINUTES = 60
-    # Коэффициент, учитавыемый для средней скорости
-    # в функции для расчета каллорий.
-    СOEFF_CALORIE_SPEED_1 = 18
-    # Коэффициент, учитавыемый для вычитания из средней скорости
-    # в функции для расчета каллорий.
-    СOEFF_CALORIE_SPEED_2 = 20
+    MULTIPLYING_MEAN_SPEED = 18
+    DECREASING_MEAN_SPEED = 20
 
     def get_spent_calories(self) -> float:
         """Получить количество затраченных калорий."""
         duration_minutes = self.duration * self.HOURS_TO_MINUTES
-        return ((self.СOEFF_CALORIE_SPEED_1
-                * self.get_mean_speed()
-                - self.СOEFF_CALORIE_SPEED_2)
-                * self.weight / self.M_IN_KM
-                * duration_minutes)
+        return (
+            (
+                self.MULTIPLYING_MEAN_SPEED * self.get_mean_speed()
+                - self.DECREASING_MEAN_SPEED
+            )
+            * self.weight / self.M_IN_KM
+            * duration_minutes
+        )
 
 
 @dataclass
@@ -92,23 +81,24 @@ class SportsWalking(Training):
     """Тренировка: спортивная ходьба."""
     height: float  # Добавили параметр "рост" в сантиметрах.
 
-    # Коэффициент для перевода часов в минуты.
     HOURS_TO_MINUTES = 60
-    # Коэффициент, учитавыемый для веса в первой части формулы
-    # в функции для расчета каллорий.
-    СOEFF_CALORIE_WEIGHT_1 = 0.035
-    # Коэффициент, учитавыемый для веса во второй части формулы
-    # в функции для расчета каллорий.
-    СOEFF_CALORIE_WEIGHT_2 = 0.029
+    MULTIPLYING_WEIGHT = 0.035
+    MULTIPLYING_MEAN_SPEED = 0.029
 
     def get_spent_calories(self) -> float:
         """Получить количество затраченных калорий."""
         # Переводим полученные часы в минуты.
         duration_minutes = self.duration * self.HOURS_TO_MINUTES
-        return ((self.СOEFF_CALORIE_WEIGHT_1 * self.weight
+        return (
+            (
+                self.MULTIPLYING_WEIGHT
+                * self.weight
                 + (self.get_mean_speed()**2 // self.height)
-                * self.СOEFF_CALORIE_WEIGHT_2 * self.weight)
-                * duration_minutes)
+                * self.MULTIPLYING_MEAN_SPEED
+                * self.weight
+            )
+            * duration_minutes
+        )
 
 
 @dataclass
@@ -118,10 +108,8 @@ class Swimming(Training):
     count_pool: float  # Добавили количество переплываний бассейна.
 
     LEN_STEP = 1.38  # Дистанция, проходимая плавцом за один гребок.
-    СOEFF_CALORIE_SPEED = 1.1  # Коэффициент, учитавыемый для средней скорости
-    # в функции для расчета каллорий.
-    СOEFF_CALORIE_WEIGHT = 2  # Коэффициент, учитавыемый для веса
-    # в функции для расчета каллорий.
+    INCREASING_MEAN_SPEED = 1.1
+    MULTIPLYING_MEAN_SPEED = 2
 
     def get_mean_speed(self) -> float:
         """Получить среднюю скорость движения."""
@@ -131,8 +119,12 @@ class Swimming(Training):
 
     def get_spent_calories(self) -> float:
         """Получить количество затраченных калорий."""
-        return ((self.get_mean_speed() + self.СOEFF_CALORIE_SPEED)
-                * self.СOEFF_CALORIE_WEIGHT * self.weight)
+        return (
+            (
+                self.get_mean_speed() + self.INCREASING_MEAN_SPEED
+            )
+            * self.MULTIPLYING_MEAN_SPEED * self.weight
+        )
 
 
 TRAINING_TYPE = {
@@ -144,10 +136,18 @@ TRAINING_TYPE = {
 
 def read_package(workout_type: str, data: list) -> Training:
     """Прочитать данные полученные от датчиков."""
-    try:
+    if workout_type not in TRAINING_TYPE:
+        raise ValueError(
+            f'Ключ {workout_type} не найден'
+            f'в списке допустимых значений.'
+        )
+    elif len(data) != len(TRAINING_TYPE[workout_type].__dataclass_fields__):
+        raise ValueError(
+            'Число входящих параметров '
+            'не соответствует ожиданию.'
+        )
+    else:
         return TRAINING_TYPE[workout_type](*data)
-    except KeyError:
-        raise KeyError('Недопустимый тип тренировки')
 
 
 def main(training: Training) -> None:
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     packages = [
         ('SWM', [720, 1, 80, 25, 40]),
         ('RUN', [15000, 1, 75]),
-        ('WLK', [9000, 1, 75, 180]),
+        ('WLK', [9000, 1, 75, 180])
     ]
 
     for workout_type, data in packages:
